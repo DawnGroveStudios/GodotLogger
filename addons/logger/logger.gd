@@ -12,10 +12,14 @@ enum LogLevel {
 }
 
 var CURRENT_LOG_LEVEL=LogLevel.INFO
+var write_logs:bool = false
+var log_path:String = "res://game.log"
 var _config
 
 var _prefix=""
 var _default_args={}
+
+var _file
 
 func _ready():
 	_set_loglevel(Config.get_var("log-level","debug"))
@@ -90,6 +94,7 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 	if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
 		print("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
 		return
+	_write_logs(msg)
 	match log_level:
 		LogLevel.DEBUG:
 			print_debug(msg)
@@ -127,3 +132,14 @@ func error(message:String,values={}):
 	
 func fatal(message:String,values={}):
 	logger(message,values,LogLevel.FATAL)
+	
+
+func _write_logs(message:String):
+	if !write_logs:
+		return
+	if _file == null:
+		_file = FileAccess.open(log_path,FileAccess.WRITE)
+	_file.store_line(message)
+	pass
+	
+
