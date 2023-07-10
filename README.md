@@ -1,5 +1,13 @@
 # GodotLogger
-gdscript plugin to add a logger equivalent to the zap logger in go
+JSON-formatted logger
+
+# Settings
+
+```
+var CURRENT_LOG_LEVEL=LogLevel.INFO
+var write_logs:bool = false
+var log_path:String = "res://game.log"
+```
 
 # Singletons
 `GodotLogger`
