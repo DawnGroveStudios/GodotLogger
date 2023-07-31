@@ -97,7 +97,8 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 	_write_logs(msg)
 	match log_level:
 		LogLevel.DEBUG:
-			print_debug(msg)
+			print(msg)
+			print_stack()
 		LogLevel.INFO:
 			print(msg)
 		LogLevel.WARN:
