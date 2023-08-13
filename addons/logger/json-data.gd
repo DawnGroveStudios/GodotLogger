@@ -52,8 +52,7 @@ static func to_dict(obj:Object,compact:bool,skip_whitelist:bool=false) ->Diction
 
 	var output:Dictionary = {}
 	if WHITELIST_VAR_NAME in obj and obj[WHITELIST_VAR_NAME].size() > 0:
-		output.merge(_get_dict_with_list(obj,obj[WHITELIST_VAR_NAME],false))
-		return output
+		return _get_dict_with_list(obj,obj[WHITELIST_VAR_NAME],false)
 
 	return output
 
