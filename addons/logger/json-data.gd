@@ -3,6 +3,8 @@ class_name JsonData
 const REQUIRED_OBJECT_SUFFIX="_r"
 const COMPACT_VAR_SUFFIX="_c"
 
+const WHITELIST_VAR_NAME = "whitelist"
+
 static func marshal(obj:Object,compact:bool=false,compressMode:int=-1,skip_whitelist:bool=false) -> PackedByteArray:
 	if obj == null:
 		return PackedByteArray()
@@ -29,7 +31,7 @@ static func unmarshal_bytes_to_dict(data:PackedByteArray,compressMode:int=-1) ->
 	if compressMode == -1:
 		return bytes_to_var(data)
 	return bytes_to_var(data.decompress_dynamic(-1,compressMode))
-	
+
 static func unmarshal_bytes(data:PackedByteArray,obj:Object,compressMode:int=-1) -> bool:
 	if data.size() == 0 or obj == null:
 		return false
@@ -41,19 +43,32 @@ static func unmarshal_bytes(data:PackedByteArray,obj:Object,compressMode:int=-1)
 		if newVar != null:
 			obj[k] = newVar
 	return false
-	
+
 static func to_dict(obj:Object,compact:bool,skip_whitelist:bool=false) ->Dictionary:
 	if obj == null:
 		return {}
+	if skip_whitelist:
+		return _get_dict_with_list(obj,obj.get_property_list(),compact)
+
 	var output:Dictionary = {}
-	var hasWhitelist = ("whitelist" in obj or "whitelist_force" in obj) and !skip_whitelist
-	if "whitelist_force" in obj and hasWhitelist and obj.whitelist_force.size() > 0:
-		output = _get_dict_with_list(obj,obj["whitelist_force"],false)
-	if "whitelist" in obj and hasWhitelist:
-		output.merge(_get_dict_with_list(obj,obj["whitelist"],compact))
+	if WHITELIST_VAR_NAME in obj and obj[WHITELIST_VAR_NAME].size() > 0:
+		output.merge(_get_dict_with_list(obj,obj[WHITELIST_VAR_NAME],false))
 		return output
 
-	return _get_dict_with_list(obj,obj.get_property_list(),compact)
+	return output
+
+static func required_items(property_list:Array) ->Array:
+		var output:Array = []
+		for property in property_list:
+			var name = ""
+			if typeof(property) != TYPE_STRING && "name" in property:
+				name = str(property.name)
+			else:
+				name = property
+			if _ends_with(name,[COMPACT_VAR_SUFFIX,REQUIRED_OBJECT_SUFFIX]):
+				output.append(property)
+				continue
+		return output
 
 static func _get_dict_with_list(obj:Object,property_list:Array,compact:bool) ->Dictionary:
 	var output:Dictionary = {}
