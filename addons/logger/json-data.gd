@@ -47,7 +47,7 @@ static func unmarshal_bytes(data:PackedByteArray,obj:Object,compressMode:int=-1)
 static func to_dict(obj:Object,compact:bool,skip_whitelist:bool=false) ->Dictionary:
 	if obj == null:
 		return {}
-	if skip_whitelist:
+	if !skip_whitelist:
 		return _get_dict_with_list(obj,obj.get_property_list(),compact)
 
 	var output:Dictionary = {}
