@@ -120,19 +120,19 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 			print(msg)
 			
 func debug(message:String,values={}):
-	logger(message,values,LogLevel.DEBUG)	
-			
+	call_thread_safe("logger",message,values,LogLevel.DEBUG)
+
 func info(message:String,values={}):
-	logger(message,values)	
-	
+	call_thread_safe("logger",message,values)
+
 func warn(message:String,values={}):
-	logger(message,values,LogLevel.WARN)	
-	
+	call_thread_safe("logger",message,values,LogLevel.WARN)
+
 func error(message:String,values={}):
-	logger(message,values,LogLevel.ERROR)	
-	
+	call_thread_safe("logger",message,values,LogLevel.ERROR)
+
 func fatal(message:String,values={}):
-	logger(message,values,LogLevel.FATAL)
+	call_thread_safe("logger",message,values,LogLevel.FATAL)
 	
 
 func _write_logs(message:String):
