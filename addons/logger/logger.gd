@@ -89,6 +89,8 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 				return
 			
 			msg += JSON.stringify(JsonData.to_dict(values,false))
+		TYPE_NIL:
+			return
 		_:
 			msg += values
 	if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
