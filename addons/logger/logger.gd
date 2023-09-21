@@ -65,10 +65,10 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 	match typeof(values):
 		TYPE_ARRAY:
 			if values.size() > 0:
-				msg += "{"
+				msg += "["
 				for k in values:
-					msg += "{k}".format({"k":k})
-				msg = msg.left(msg.length()-1)+"}"
+					msg += "{k},".format({"k":JSON.stringify(k)})
+				msg = msg.left(msg.length()-1)+"]"
 		TYPE_DICTIONARY:
 			for k in _default_args:
 				values[k] = _default_args[k]
@@ -76,9 +76,9 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 				msg += "{"
 				for k in values:
 					if typeof(values[k]) == TYPE_OBJECT && values[k] != null:
-						msg += '"{k}":"{v}",'.format({"k":k,"v":JSON.stringify(JsonData.to_dict(values[k],false))})
+						msg += '{k}:{v},'.format({"k":JSON.stringify(k),"v":JSON.stringify(JsonData.to_dict(values[k],false))})
 					else:
-						msg += '"{k}":"{v}",'.format({"k":k,"v":values[k]})
+						msg += '{k}:{v},'.format({"k":JSON.stringify(k),"v":JSON.stringify(values[k])})
 				msg = msg.left(msg.length()-1)+"}"
 		TYPE_PACKED_BYTE_ARRAY:
 			if values == null:
