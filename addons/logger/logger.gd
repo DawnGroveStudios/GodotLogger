@@ -92,7 +92,7 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 		TYPE_NIL:
 			return
 		_:
-			msg += values
+			msg += JSON.stringify(values)
 	if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
 		print("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
 		return
