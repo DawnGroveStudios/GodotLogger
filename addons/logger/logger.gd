@@ -82,15 +82,16 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 				msg = msg.left(msg.length()-1)+"}"
 		TYPE_PACKED_BYTE_ARRAY:
 			if values == null:
-				return
-			msg += JSON.stringify(JsonData.unmarshal_bytes_to_dict(values))
+				msg += JSON.stringify(null)
+			else:
+				msg += JSON.stringify(JsonData.unmarshal_bytes_to_dict(values))
 		TYPE_OBJECT:
 			if values == null:
-				return
-			
-			msg += JSON.stringify(JsonData.to_dict(values,false))
+				msg += JSON.stringify(null)
+			else:
+				msg += JSON.stringify(JsonData.to_dict(values,false))
 		TYPE_NIL:
-			return
+			msg += JSON.stringify(null)
 		_:
 			msg += JSON.stringify(values)
 	if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
