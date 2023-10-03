@@ -3,6 +3,8 @@ extends Node
 
 class_name Log
 
+signal log_message(level:LogLevel,message:String)
+
 enum LogLevel {
 	DEBUG,
 	INFO,
@@ -98,6 +100,7 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 		print("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
 		return
 	_write_logs(msg)
+	emit_signal("log_message", log_level, msg)
 	match log_level:
 		LogLevel.DEBUG:
 			print(msg)
@@ -146,4 +149,3 @@ func _write_logs(message:String):
 	_file.store_line(message)
 	pass
 	
-
