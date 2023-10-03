@@ -3,6 +3,8 @@ extends Node
 
 class_name Log
 
+signal log_message(level:LogLevel,message:String)
+
 enum LogLevel {
 	DEBUG,
 	INFO,
@@ -23,7 +25,7 @@ var _file
 
 func _ready():
 	_set_loglevel(Config.get_var("log-level","debug"))
-	
+
 func _set_loglevel(level:String):
 	logger("setting log level",{"level":level},LogLevel.INFO)
 	match level.to_lower():
@@ -52,7 +54,7 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 	var log_msg_format = "{level} [{time}]{prefix} {message} "
 
 	var now = Time.get_datetime_dict_from_system(true)
-	
+
 	var msg = log_msg_format.format(
 		{
 			"prefix":_prefix,
@@ -60,15 +62,15 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 			"time":"{day}/{month}/{year} {hour}:{minute}:{second}".format(now),
 			"level":LogLevel.keys()[log_level]
 		})
-	
-	
+
+
 	match typeof(values):
 		TYPE_ARRAY:
 			if values.size() > 0:
-				msg += "["
+				msg += "{"
 				for k in values:
-					msg += "{k},".format({"k":JSON.stringify(k)})
-				msg = msg.left(msg.length()-1)+"]"
+					msg += "{k}".format({"k":k})
+				msg = msg.left(msg.length()-1)+"}"
 		TYPE_DICTIONARY:
 			for k in _default_args:
 				values[k] = _default_args[k]
@@ -76,28 +78,28 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 				msg += "{"
 				for k in values:
 					if typeof(values[k]) == TYPE_OBJECT && values[k] != null:
-						msg += '"{k}":{v},'.format({"k":k,"v":JSON.stringify(JsonData.to_dict(values[k],false))})
+						msg += '"{k}":"{v}",'.format({"k":k,"v":JSON.stringify(JsonData.to_dict(values[k],false))})
 					else:
-						msg += '"{k}":{v},'.format({"k":k,"v":JSON.stringify(values[k])})
+						msg += '"{k}":"{v}",'.format({"k":k,"v":values[k]})
 				msg = msg.left(msg.length()-1)+"}"
 		TYPE_PACKED_BYTE_ARRAY:
 			if values == null:
-				msg += JSON.stringify(null)
-			else:
-				msg += JSON.stringify(JsonData.unmarshal_bytes_to_dict(values))
+				return
+			msg += JSON.stringify(JsonData.unmarshal_bytes_to_dict(values))
 		TYPE_OBJECT:
 			if values == null:
-				msg += JSON.stringify(null)
-			else:
-				msg += JSON.stringify(JsonData.to_dict(values,false))
+				return
+
+			msg += JSON.stringify(JsonData.to_dict(values,false))
 		TYPE_NIL:
-			msg += JSON.stringify(null)
+			pass
 		_:
-			msg += JSON.stringify(values)
+			msg += values
 	if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
 		print("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
 		return
 	_write_logs(msg)
+	emit_signal("log_message",log_level,msg)
 	match log_level:
 		LogLevel.DEBUG:
 			print(msg)
@@ -121,22 +123,22 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 			get_tree().quit()
 		_:
 			print(msg)
-			
+
 func debug(message:String,values={}):
-	call_thread_safe("logger",message,values,LogLevel.DEBUG)
+	logger(message,values,LogLevel.DEBUG)
 
 func info(message:String,values={}):
-	call_thread_safe("logger",message,values)
+	logger(message,values)
 
 func warn(message:String,values={}):
-	call_thread_safe("logger",message,values,LogLevel.WARN)
+	logger(message,values,LogLevel.WARN)
 
 func error(message:String,values={}):
-	call_thread_safe("logger",message,values,LogLevel.ERROR)
+	logger(message,values,LogLevel.ERROR)
 
 func fatal(message:String,values={}):
-	call_thread_safe("logger",message,values,LogLevel.FATAL)
-	
+	logger(message,values,LogLevel.FATAL)
+
 
 func _write_logs(message:String):
 	if !write_logs:
@@ -145,5 +147,5 @@ func _write_logs(message:String):
 		_file = FileAccess.open(log_path,FileAccess.WRITE)
 	_file.store_line(message)
 	pass
-	
+
 
