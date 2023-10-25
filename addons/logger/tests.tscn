@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3 uid="uid://dvs5s6keixqma"]
+
+[sub_resource type="GDScript" id="GDScript_q0mxg"]
+script/source = "extends Node
+
+func _ready():
+	GodotLogger.info(\"something\")
+	GodotLogger.info(\"testing values\", {\"bar\":Vector3(1,2,3)})
+	GodotLogger.dbg(\"Shouldn't show\")
+	GodotLogger.current_log_level = GodotLogger.LogLevel.DEBUG
+	GodotLogger.dbg(\"Should show\")
+	GodotLogger.warn(\"test warning\")
+	var logger = LogStream.new(\"test logger\", LogStream.LogLevel.WARN)
+	logger.info(\"This shouldn't log\")
+	logger.warn(\"This should log\")
+	logger.err(\"test error\")
+"
+
+[node name="test" type="Node"]
+script = SubResource("GDScript_q0mxg")
