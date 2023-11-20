@@ -62,63 +62,58 @@ signal log_message(level:LogLevel,message:String)
 
 func _init(log_name:String, min_log_level:=LogLevel.DEFAULT, crash_behavior:=DEFAULT_CRASH_BEHAVIOR):
 	_log_name = log_name
-	current_log_level = _get_external_log_level() if min_log_level == LogLevel.DEFAULT else min_log_level
+	current_log_level = min_log_level
 	_crash_behavior = crash_behavior
-
-##prints a message in the log. Defaulting the level to INFO.
-func logger(message:String, values={}, log_level := LogLevel.INFO):
-	call_thread_safe("_internal_log", message, values, log_level)
 
 ##prints a message to the log at the debug level.
 func debug(message, values={}):
-	logger(message, values, LogLevel.DEBUG)
-
+	call_thread_safe("_internal_log", message, values, LogLevel.DEBUG)
 
 ##prints a message to the log at the info level.
 func info(message:String,values={}):
-	logger(message,values)
+	call_thread_safe("_internal_log", message, values)
 
 ##prints a message to the log at the warning level.
 func warn(message:String,values={}):
-	logger(message,values,LogLevel.WARN)
+	call_thread_safe("_internal_log", message, values, LogLevel.WARN)
 
 ##Prints a message to the log at the error level.
 func error(message:String,values={}):
-	logger(message,values,LogLevel.ERROR)
+	call_thread_safe("_internal_log", message, values, LogLevel.ERROR)
 
 ##Prints a message to the log at the fatal level, exits the application 
 ##since there has been a fatal error.
 func fatal(message:String,values={}):
-	call_thread_safe("logger",message,values,LogLevel.FATAL)
+	call_thread_safe("_internal_log", message, values, LogLevel.FATAL)
 
 ##Shorthand for debug
 func dbg(message:String,values={}):
-	debug(message, values)
+	call_thread_safe("_internal_log", message, values, LogLevel.DEBUG)
 
 ##Shorthand for error
 func err(message:String,values={}):
-	error(message, values)
+	call_thread_safe("_internal_log", message, values, LogLevel.ERROR)
 
 ##Throws an error if err_code is not of value "OK" and appends the error code string.
 func err_cond_not_ok(err_code:Error, message:String, fatal:=true, other_values_to_be_printed={}):
 	if err_code != OK:
-		logger(message + ". Error code: " + error_string(err_code), other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
+		call_thread_safe("_internal_log", message + ". Error code: " + error_string(err_code), other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
 
 ##Throws an error if the "statement" passed is false. Handy for making code "free" from if statements.
 func err_cond_false(statement:bool, message:String, fatal:=true, other_values_to_be_printed={}):
 	if !statement:
-		logger(message, other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
+		call_thread_safe("_internal_log", message, other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
 
 ##Throws an error if argument == null
 func err_cond_null(arg, message:String, fatal:=true, other_values_to_be_printed={}):
 	if arg == null:
-		logger(message, other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
+		call_thread_safe("_internal_log", message, other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
 
 ##Throws an error if the arg1 isn't equal to arg2. Handy for making code "free" from if statements.
 func err_cond_not_equal(arg1, arg2, message:String, fatal:=true, other_values_to_be_printed={}):
 	#the type Color is weird in godot, so therefore this edgecase...
 	if (arg1 is Color && arg2 is Color && !arg1.is_equal_approx(arg2)) || arg1 != arg2:
-		logger(str(arg1) + " != " + str(arg2) + ", not allowed. " + message, other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
+		call_thread_safe("_internal_log", str(arg1) + " != " + str(arg2) + ", not allowed. " + message, other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
 
 ##Main internal logging method, please use the logger() instead since this is not thread safe.
 func _internal_log(message:String, values, log_level := LogLevel.INFO):
@@ -134,7 +129,7 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 			"time":String(LOG_TIME_FORMAT).format(now),
 			"level":LogLevel.keys()[log_level]
 		})
-	
+	var stack = get_stack()
 	
 	match typeof(values):
 		TYPE_ARRAY:
@@ -166,51 +161,37 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 			msg += JSON.stringify(null)
 		_:
 			msg += JSON.stringify(values)
-	#This isn't a problem since print_stack() doesn't do anything in stackless instances (AKA without remote debugger or from other threads)
-	#As of 4.2 the thread problem will no longer be an issue to my knowledge. 
-	
-	#if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
-	#	print("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
-	#	return
 	
 	_write_logs_to_file(msg)
 	emit_signal("log_message", log_level, msg)
 	match log_level:
 		LogLevel.DEBUG:
-			print(msg)
-			print_stack()
+			print_rich("[color=gray]"+msg+"[/color]")
 		LogLevel.INFO:
 			print(msg)
 		LogLevel.WARN:
-			if !OS.has_feature("template"):#Aka not running in an exported scenario -> ran from the editor, otherwise the message shows up twice in system console.
-				print(msg)
+			if !stack.is_empty():#Aka is connected to debug server -> print to the editor console in addition to pushing the warning.
+				print_rich("[color=yellow]"+msg+"[/color]")
 			push_warning(msg)
-			print_stack()
-		LogLevel.ERROR:
-			push_error(msg)
-			if !OS.has_feature("template"):#aka not running in an exported scenario -> ran from the editor, otherwise the message shows up twice in system console.
-				printerr(msg)
-				#mimic the native godot behavior of halting execution upon error. 
-				if BREAK_ON_ERROR:
-					##Please go a few steps down the stack to find the errorous code, since you are currently inside the error handler.
-					breakpoint
-			print_stack()
-			print_tree()
-		LogLevel.FATAL:
-			push_error(msg)
-			if !OS.has_feature("template"):#aka not running in an exported scenario -> ran from the editor, otherwise the message shows up twice in system console.
-				printerr(msg)
-				#mimic the native godot behavior of halting execution upon error. 
-				if BREAK_ON_ERROR:
-					##Please go a few steps down the stack to find the errorous code, since you are currently inside the error handler.
-					breakpoint
-			print_stack()
-			print_tree()
-			_crash_behavior.call()
+			print(_get_reduced_stack(stack))
+			print("")#Print empty line to space stack from new message
+		LogLevel.DEFAULT:
+			err("Can't log at 'default' level, this level is only used as filter")
 		_:
-			print(msg)
+			push_error(msg)
+			if !stack.is_empty():#Aka is connected to debug server -> print to the editor console in addition to pushing the warning.
+				printerr(msg)
+				#Mimic the native godot behavior of halting execution upon error. 
+				if BREAK_ON_ERROR:
+					##Please go a few steps down the stack to find the errorous code, since you are currently inside the error handler.
+					breakpoint
+			print(_get_reduced_stack(stack))
+			print_tree()
+			print("")#Print empty line to space stack from new message
+			if log_level == LogLevel.FATAL:
+				_crash_behavior.call()
 
-##internal method 
+##Internal method.
 static func _write_logs_to_file(message:String):
 	if !WRITE_LOGS_TO_FILE:
 		return
@@ -218,12 +199,27 @@ static func _write_logs_to_file(message:String):
 		_log_file = FileAccess.open(LOG_FILE_PATH.format(_start_time),FileAccess.WRITE)
 	_log_file.store_line(message)
 
+func _get_reduced_stack(stack:Array)->String:
+	var stack_trace_message:=""
+	
+	if !stack.is_empty():#aka has stack trace.
+		stack_trace_message += "at:\n"
+		
+		for i in range(stack.size()-2):
+			var entry = stack[stack.size()-1-i]
+			stack_trace_message += "\t" + entry["source"] + ":" + str(entry["line"]) + " in func " + entry["function"] + "\n"
+	else:
+		##TODO: test print_debug()
+		stack_trace_message = "No stack trace available, please run from within the editor or connect to a remote debug context."
+	return stack_trace_message
 
+##Internal method.
 func _set_level(level:LogLevel):
+	level = _get_external_log_level() if level == LogLevel.DEFAULT else level
 	info("setting log level to " + LogLevel.keys()[level])
 	current_log_level = level
 
-
+##Internal method.
 func _get_external_log_level()->LogLevel:
 	var key = Config.get_var("log-level","info").to_upper()
 	if LogLevel.keys().has(key):

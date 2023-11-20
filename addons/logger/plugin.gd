@@ -2,7 +2,7 @@
 extends EditorPlugin
 
 var loadSingletonPlugin = {
-	"GodotLogger" : "res://addons/logger/logger.gd",
+	"Log" : "res://addons/logger/logger.gd",
 }
 
 func _enter_tree():

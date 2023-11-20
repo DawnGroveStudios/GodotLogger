@@ -1,0 +1,44 @@
+[gd_scene load_steps=2 format=3 uid="uid://dvs5s6keixqma"]
+
+[sub_resource type="GDScript" id="GDScript_q0mxg"]
+script/source = "extends Node
+
+#Run scene to run tests.
+func _ready():
+	
+	##Print \"something\" to the main log channel
+	Log.info(\"something\")
+	Log.info(\"testing values\", {\"bar\":Vector3(1,2,3)})
+	#Does not show since the default minimum log level for a given logstream is set to info, and debug < info.
+	Log.dbg(\"Shouldn't show\")
+	Log.current_log_level = Log.LogLevel.DEBUG
+	#Now it shows since we have set the level to debug
+	Log.dbg(\"Should show\")
+	
+	Log.log_message.connect(func(_level, _message):
+		#print(\"Checking that the signal is working. Message: \" + _message)
+		pass
+	)
+	stack_test()
+	#Create a new logstream that is independently controlled from main, muting every message below WARN. (LogStream.LogLevel is equal to Log.LogLevel since Log is a LogStream).
+	var logger = LogStream.new(\"test logger\", LogStream.LogLevel.WARN)
+	logger.info(\"This shouldn't log\")
+	logger.warn(\"This should log\")
+	logger.err(\"test error\")
+	
+	#create a null file object to test err_cond_methods on.
+	var file = FileAccess.open(\"invalid file name\", FileAccess.READ)
+	logger.err_cond_not_ok(FileAccess.get_open_error(), \"Testing err_cond_not_OK\")
+	logger.current_log_level = LogStream.LogLevel.FATAL
+	logger.err_cond_null(file, \"Does not print error since level < fatal\")
+	
+	#Please go down 2 frames in the debug stack to get to this point, since the two top most is internal to the plugin.
+	logger.err_cond_null(file, \"Emits at fatal level since we pass fatal=true, brings up the debugger.\", true)
+
+func stack_test():
+	Log.warn(\"test warning\")
+	
+"
+
+[node name="test" type="Node"]
+script = SubResource("GDScript_q0mxg")
