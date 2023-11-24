@@ -15,12 +15,8 @@ func _ready():
 	#Now it shows since we have set the level to debug
 	Log.dbg(\"Should show\")
 	
-	Log.log_message.connect(func(_level, _message):
-		#print(\"Checking that the signal is working. Message: \" + _message)
-		pass
-	)
-	stack_test()
-	#Create a new logstream that is independently controlled from main, muting every message below WARN. (LogStream.LogLevel is equal to Log.LogLevel since Log is a LogStream).
+	#Create a new logstream that is independently controlled from main, muting every message below WARN. 
+	#(LogStream.LogLevel is equal to Log.LogLevel since Log is a LogStream).
 	var logger = LogStream.new(\"test logger\", LogStream.LogLevel.WARN)
 	logger.info(\"This shouldn't log\")
 	logger.warn(\"This should log\")
@@ -34,6 +30,11 @@ func _ready():
 	
 	#Please go down 2 frames in the debug stack to get to this point, since the two top most is internal to the plugin.
 	logger.err_cond_null(file, \"Emits at fatal level since we pass fatal=true, brings up the debugger.\", true)
+	
+	Log.log_message.connect(func(_level, _message):
+		#print(\"Checking that the signal is working. Message: \" + _message)
+		pass)
+	stack_test()
 
 func stack_test():
 	Log.warn(\"test warning\")

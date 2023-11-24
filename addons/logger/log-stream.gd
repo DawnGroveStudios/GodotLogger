@@ -10,13 +10,9 @@ class_name LogStream
 ##Controls how the message should be formatted, follows String.format(), valid keys are: "level", "time", "log_name", "message"
 const LOG_MESSAGE_FORMAT = "{log_name}/{level} [{time}] {message}"
 
-##Whether to write logged messages to a file as well as to the console.
-const WRITE_LOGS_TO_FILE = false
-
 ##Controls how the message time should be recorded in the console, valid keys are the dictionary keys in Time.get_date_time()
 const LOG_TIME_FORMAT = "{hour}:{minute}:{second}"
-##Controls where the log files should be placed. Valid keys are the dictionary keys in Time.get_date_time()
-const LOG_FILE_PATH = "user://logs/{year}{month}{date} - {hour}:{minute}:{second}.log"
+
 ##Whether to use the UTS time or the user
 const USE_UTS_TIME_FORMAT = false
 ##Enables a breakpoint to mimic the godot behavior where the application doesn't crash when connected to debug environment, 
@@ -162,7 +158,6 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 		_:
 			msg += JSON.stringify(values)
 	
-	_write_logs_to_file(msg)
 	emit_signal("log_message", log_level, msg)
 	match log_level:
 		LogLevel.DEBUG:
@@ -191,13 +186,6 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 			if log_level == LogLevel.FATAL:
 				_crash_behavior.call()
 
-##Internal method.
-static func _write_logs_to_file(message:String):
-	if !WRITE_LOGS_TO_FILE:
-		return
-	if _log_file == null:
-		_log_file = FileAccess.open(LOG_FILE_PATH.format(_start_time),FileAccess.WRITE)
-	_log_file.store_line(message)
 
 func _get_reduced_stack(stack:Array)->String:
 	var stack_trace_message:=""
