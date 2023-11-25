@@ -8,10 +8,8 @@ class_name LogStream
 #Settings
 
 ##Controls how the message should be formatted, follows String.format(), valid keys are: "level", "time", "log_name", "message"
-const LOG_MESSAGE_FORMAT = "{log_name}/{level} [{time}] {message}"
+const LOG_MESSAGE_FORMAT = "{log_name}/{level} [lb]{hour}:{minute}:{second}[rb] {message}"
 
-##Controls how the message time should be recorded in the console, valid keys are the dictionary keys in Time.get_date_time()
-const LOG_TIME_FORMAT = "{hour}:{minute}:{second}"
 
 ##Whether to use the UTS time or the user
 const USE_UTS_TIME_FORMAT = false
@@ -50,7 +48,6 @@ var _print_action:Callable
 var _crash_behavior
 
 static var _log_file:FileAccess
-static var _start_time = Time.get_datetime_string_from_system(USE_UTS_TIME_FORMAT)
 static var initialized = false
 
 ##Emits this signal whenever a message is recieved.
@@ -118,13 +115,13 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 	
 	var now = Time.get_datetime_dict_from_system(USE_UTS_TIME_FORMAT)
 	
-	var msg = String(LOG_MESSAGE_FORMAT).format(
-		{
+	var format_data := {
 			"log_name":_log_name,
 			"message":message,
-			"time":String(LOG_TIME_FORMAT).format(now),
 			"level":LogLevel.keys()[log_level]
-		})
+		}
+	format_data.merge(now)
+	var msg = String(LOG_MESSAGE_FORMAT).format(format_data)
 	var stack = get_stack()
 	
 	match typeof(values):
@@ -163,10 +160,11 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 		LogLevel.DEBUG:
 			print_rich("[color=gray]"+msg+"[/color]")
 		LogLevel.INFO:
-			print(msg)
+			print_rich(msg)
 		LogLevel.WARN:
 			if !stack.is_empty():#Aka is connected to debug server -> print to the editor console in addition to pushing the warning.
 				print_rich("[color=yellow]"+msg+"[/color]")
+			
 			push_warning(msg)
 			print(_get_reduced_stack(stack))
 			print("")#Print empty line to space stack from new message
