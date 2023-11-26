@@ -11,8 +11,8 @@ class_name LogStream
 const LOG_MESSAGE_FORMAT = "{log_name}/{level} [lb]{hour}:{minute}:{second}[rb] {message}"
 
 
-##Whether to use the UTS time or the user
-const USE_UTS_TIME_FORMAT = false
+##Whether to use the UTC time or the user
+const USE_UTC_TIME_FORMAT = false
 ##Enables a breakpoint to mimic the godot behavior where the application doesn't crash when connected to debug environment, 
 ##but instead freezed and shows the stack etc in the debug panel.
 const BREAK_ON_ERROR = true
@@ -90,7 +90,7 @@ func err(message:String,values={}):
 ##Throws an error if err_code is not of value "OK" and appends the error code string.
 func err_cond_not_ok(err_code:Error, message:String, fatal:=true, other_values_to_be_printed={}):
 	if err_code != OK:
-		call_thread_safe("_internal_log", message + ". Error code: " + error_string(err_code), other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
+		call_thread_safe("_internal_log", message + "" if message.ends_with(".") else "." + " Error string: " + error_string(err_code), other_values_to_be_printed, LogLevel.FATAL if fatal else LogLevel.ERROR)
 
 ##Throws an error if the "statement" passed is false. Handy for making code "free" from if statements.
 func err_cond_false(statement:bool, message:String, fatal:=true, other_values_to_be_printed={}):
@@ -113,7 +113,7 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 	if current_log_level > log_level :
 		return
 	
-	var now = Time.get_datetime_dict_from_system(USE_UTS_TIME_FORMAT)
+	var now = Time.get_datetime_dict_from_system(USE_UTC_TIME_FORMAT)
 	
 	var format_data := {
 			"log_name":_log_name,
@@ -166,11 +166,11 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 				print_rich("[color=yellow]"+msg+"[/color]")
 			
 			push_warning(msg)
-			print(_get_reduced_stack(stack))
-			print("")#Print empty line to space stack from new message
+			print(_get_reduced_stack(stack) + "\n")
 		LogLevel.DEFAULT:
 			err("Can't log at 'default' level, this level is only used as filter")
 		_:
+			msg = msg.replace("[lb]", "[").replace("[rb]", "]")
 			push_error(msg)
 			if !stack.is_empty():#Aka is connected to debug server -> print to the editor console in addition to pushing the warning.
 				printerr(msg)
@@ -179,6 +179,7 @@ func _internal_log(message:String, values, log_level := LogLevel.INFO):
 					##Please go a few steps down the stack to find the errorous code, since you are currently inside the error handler.
 					breakpoint
 			print(_get_reduced_stack(stack))
+			print("tree: ")
 			print_tree()
 			print("")#Print empty line to space stack from new message
 			if log_level == LogLevel.FATAL:

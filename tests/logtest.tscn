@@ -8,7 +8,8 @@ func _ready():
 	
 	##Print \"something\" to the main log channel
 	Log.info(\"something\")
-	Log.info(\"testing values\", {\"bar\":Vector3(1,2,3)})
+	Log.info(\"testing a value\", 5)
+	Log.info(\"testing more values\", {\"bar\":Vector3(1,2,3)})
 	#Does not show since the default minimum log level for a given logstream is set to info, and debug < info.
 	Log.dbg(\"Shouldn't show\")
 	Log.current_log_level = Log.LogLevel.DEBUG
