@@ -67,35 +67,32 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 	match typeof(values):
 		TYPE_ARRAY:
 			if values.size() > 0:
-				msg += "["
-				for k in values:
-					msg += "{k},".format({"k":JSON.stringify(k)})
-				msg = msg.left(msg.length()-1)+"]"
+				msg[values] = values
 		TYPE_DICTIONARY:
 			for k in _default_args:
 				values[k] = _default_args[k]
 			if values.size() > 0:
-				msg += "{"
+				msg.log = { "text": message, "level": log_level }
 				for k in values:
 					if typeof(values[k]) == TYPE_OBJECT && values[k] != null:
-						msg += '"{k}":{v},'.format({"k":k,"v":JSON.stringify(JsonData.to_dict(values[k],false))})
+						msg[k] = JsonData.to_dict(values[k],false)
 					else:
-						msg += '"{k}":{v},'.format({"k":k,"v":JSON.stringify(values[k])})
-				msg = msg.left(msg.length()-1)+"}"
+						msg[k] = values[k]
 		TYPE_PACKED_BYTE_ARRAY:
 			if values == null:
-				msg += JSON.stringify(null)
+				pass
 			else:
-				msg += JSON.stringify(JsonData.unmarshal_bytes_to_dict(values))
+				msg.merge(JsonData.unmarshal_bytes_to_dict(values))
 		TYPE_OBJECT:
 			if values == null:
-				msg += JSON.stringify(null)
+				pass
 			else:
-				msg += JSON.stringify(JsonData.to_dict(values,false))
+				msg.merge(JsonData.to_dict(values,false))
 		TYPE_NIL:
-			msg += JSON.stringify(null)
+			pass
 		_:
-			msg += JSON.stringify(values)
+			msg.values = values
+
 	if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
 		print("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
 		return
@@ -141,11 +138,11 @@ func fatal(message:String,values={}):
 	call_thread_safe("logger",message,values,LogLevel.FATAL)
 	
 
-func _write_logs(message:String):
+func _write_logs(message:Dictionary):
 	if !write_logs:
 		return
 	if _file == null:
 		_file = FileAccess.open(log_path,FileAccess.WRITE)
-	_file.store_line(message)
+	_file.store_line(JSON.stringify(message))
 	pass
 	
