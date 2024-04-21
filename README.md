@@ -10,7 +10,7 @@ var log_path:String = "res://game.log"
 ```
 
 # Command line args
-Providing these to your command line if you want to override defaults
+Provide these to your command line if you want to override defaults
 ```
 log-level=error
 use-isotime=true
