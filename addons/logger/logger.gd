@@ -14,6 +14,7 @@ enum LogLevel {
 }
 
 var CURRENT_LOG_LEVEL=LogLevel.INFO
+var USE_ISOTIME=false
 var write_logs:bool = false
 var log_path:String = "res://game.log"
 var _config
@@ -25,6 +26,7 @@ var _file
 
 func _ready():
 	_set_loglevel(Config.get_var("log-level","debug"))
+	_set_time_format(Config.get_var("use-isotime", "false"))
 	
 func _set_loglevel(level:String):
 	logger("setting log level",{"level":level},LogLevel.INFO)
@@ -39,6 +41,14 @@ func _set_loglevel(level:String):
 			CURRENT_LOG_LEVEL = LogLevel.ERROR
 		"fatal":
 			CURRENT_LOG_LEVEL = LogLevel.FATAL
+
+func _set_time_format(level:String):
+	logger("setting iso format",{"level":level},LogLevel.INFO)
+	match level.to_lower():
+		"true":
+			USE_ISOTIME = true
+		"false": 
+			USE_ISOTIME = false
 
 func with(prefix:String="",args:Dictionary={}) ->Log :
 	var l = Log.new()
@@ -55,7 +65,18 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 
 	var now = Time.get_datetime_dict_from_system(true)
 	
-	var msg = log_msg_format.format(
+	var msg
+	if USE_ISOTIME:
+		var iso_time = Time.get_datetime_string_from_datetime_dict(now, false)
+		msg = log_msg_format.format(
+		{
+			"prefix":_prefix,
+			"message":message,
+			"time": "{iso_time}Z".format({"iso_time": iso_time}),
+			"level":LogLevel.keys()[log_level]
+		})
+	else:
+		msg = log_msg_format.format(
 		{
 			"prefix":_prefix,
 			"message":message,
