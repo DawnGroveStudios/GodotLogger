@@ -94,7 +94,7 @@ func _get_format_massage(message: String, log_level) -> String:
 		{
 			"prefix":_prefix,
 			"message":message,
-			"time":"{day}/{month}/{year} {hour}:{minute}:{second}".format(_get_time()),
+			"time": _get_time(),
 			"level": LogLevel.keys()[log_level].rpad(5, " ")
 		})
 	return msg
@@ -103,14 +103,14 @@ func _get_format_massage(message: String, log_level) -> String:
 func _get_time():
 	var now = Time.get_datetime_dict_from_system(true)
 	if USE_ISOTIME:
-		return Time.get_datetime_string_from_datetime_dict(now, false)	
+		return Time.get_datetime_string_from_datetime_dict(now, false)
 	
 	now.day = "%02d" % now.day
 	now.month = "%02d" % now.month
 	now.hour = "%02d" % now.hour
 	now.minute = "%02d" % now.minute
 	now.second = "%02d" % now.second
-	return now
+	return "{day}/{month}/{year} {hour}:{minute}:{second}".format(now)
 
 
 func _add_values(msg, values):
