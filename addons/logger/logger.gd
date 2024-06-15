@@ -226,7 +226,6 @@ func _get_log_path():
 func _get_global_logger():
 	if not Engine.has_singleton("GodotLogger"): 
 		Engine.register_singleton("GodotLogger", Log.new())
-		return null
 	return Engine.get_singleton("GodotLogger")
 
 
