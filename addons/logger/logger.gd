@@ -22,17 +22,17 @@ const COLORS = {
 const LOG_FORMAT = "{level} [{time}]{prefix} {message} "
 
 
-var CURRENT_LOG_LEVEL=LogLevel.INFO
+var CURRENT_LOG_LEVEL=LogLevel.DEBUG
 var USE_ISOTIME: bool = false
 var write_logs: bool = true
 var printing_stack: bool = false
-var log_path: String = "res://game.log"
+var log_path: String = "res://.logs/game.log"
 var _config
 
-var _prefix=""
-var _default_args={}
+var _prefix  = ""
+var _default_args = {}
 
-var _file
+var _file: FileAccess
 
 
 func _ready():
@@ -86,6 +86,7 @@ func logger(message:String,values,log_level=LogLevel.INFO):
 	
 	emit_signal("log_message", log_level, msg)
 	_write_logs(msg)
+	#call_thread_safe("_write_logs", msg)
 	_print_msg(log_level, msg)
 
 
@@ -198,13 +199,36 @@ func error(message:String,values={}):
 
 func fatal(message:String,values={}):
 	call_thread_safe("logger",message,values,LogLevel.FATAL)
-	
+
 
 func _write_logs(message:String):
 	if !write_logs:
 		return
-	if _file == null:
-		_file = FileAccess.open(log_path,FileAccess.WRITE)
-	_file.store_line(message)
-	pass
 	
+	if not _file:
+		var global_logger = _get_global_logger()
+		if not global_logger: return
+		if not global_logger._file:
+			global_logger._load_file()
+		_file = global_logger._file
+	
+	_file.store_line(message)
+	_file.flush()
+
+
+func _get_log_path():
+	if Engine.is_editor_hint(): 
+		var path_array = log_path.split(".")
+		return  "%s_editor.%s" % [path_array[0], path_array[1]]
+	return log_path
+
+
+func _get_global_logger():
+	if not Engine.has_singleton("GodotLogger"): 
+		Engine.register_singleton("GodotLogger", Log.new())
+		return null
+	return Engine.get_singleton("GodotLogger")
+
+
+func _load_file():
+	_file = FileAccess.open(_get_log_path(), FileAccess.WRITE)
