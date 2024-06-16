@@ -22,7 +22,8 @@ const COLORS = {
 const LOG_FORMAT = "{level} [{time}]{prefix} {message} "
 
 
-var CURRENT_LOG_LEVEL=LogLevel.DEBUG
+var CURRENT_LOG_LEVEL=LogLevel.INFO
+var CURRENT_FILE_LEVEL = LogLevel.DEBUG
 var USE_ISOTIME: bool = false
 var write_logs: bool = true
 var printing_stack: bool = false
@@ -36,7 +37,7 @@ var _file: FileAccess
 
 
 func _ready():
-	_set_loglevel(Config.get_var("log-level","debug"))
+	_set_loglevel(Config.get_var("log-level","info"))
 	_set_time_format(Config.get_var("use-isotime", "false"))
 
 
@@ -74,20 +75,19 @@ func with(prefix:String="",args:Dictionary={}) ->Log :
 
 
 func logger(message:String,values,log_level=LogLevel.INFO):
-	if CURRENT_LOG_LEVEL > log_level :
-		return
-	
 	var msg := _get_format_massage(message, log_level)
 	msg = _add_values(msg, values)
 	
-	if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
-		print_rich("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
-		return
+	if CURRENT_LOG_LEVEL <= log_level:
+		if OS.get_main_thread_id() != OS.get_thread_caller_id() and log_level == LogLevel.DEBUG:
+			print_rich("[%d]Cannot retrieve debug info outside the main thread:\n\t%s" % [OS.get_thread_caller_id(),msg])
+			return
 	
-	emit_signal("log_message", log_level, msg)
-	_write_logs(msg)
-	#call_thread_safe("_write_logs", msg)
-	_print_msg(log_level, msg)
+		emit_signal("log_message", log_level, msg)
+		_print_msg(log_level, msg)
+	
+	if !write_logs or CURRENT_FILE_LEVEL > log_level: return
+	_write_logs(_remove_bbcode(msg), log_level)
 
 
 func _get_format_massage(message: String, log_level) -> String:
@@ -101,7 +101,7 @@ func _get_format_massage(message: String, log_level) -> String:
 	return msg
 
 
-func _get_time():
+func _get_time(file_format := false) -> String:
 	var now = Time.get_datetime_dict_from_system(true)
 	if USE_ISOTIME:
 		return Time.get_datetime_string_from_datetime_dict(now, false)
@@ -111,6 +111,7 @@ func _get_time():
 	now.hour = "%02d" % now.hour
 	now.minute = "%02d" % now.minute
 	now.second = "%02d" % now.second
+	if file_format: return "{day}.{month}.{year}_{hour}.{minute}.{second}".format(now)
 	return "{day}/{month}/{year} {hour}:{minute}:{second}".format(now)
 
 
@@ -201,33 +202,42 @@ func fatal(message:String,values={}):
 	call_thread_safe("logger",message,values,LogLevel.FATAL)
 
 
-func _write_logs(message:String):
-	if !write_logs:
-		return
-	
+func _write_logs(message:String, log_level):
 	if not _file:
 		var global_logger = _get_global_logger()
 		if not global_logger: return
 		if not global_logger._file:
 			global_logger._load_file()
 		_file = global_logger._file
+		return
 	
 	_file.store_line(message)
 	_file.flush()
 
 
+func _remove_bbcode(msg: String):
+	var left_index := msg.find("[", 27)
+	while left_index >= 0:
+		var right_index := msg.find("]", 27)
+		msg = msg.erase(left_index, right_index - left_index + 1)
+		left_index = msg.find("[", 27)
+	return msg
+
+
 func _get_log_path():
+	var path_array = log_path.rsplit(".", true, 1)
+	var time = _get_time(true)
 	if Engine.is_editor_hint(): 
-		var path_array = log_path.split(".")
-		return  "%s_editor.%s" % [path_array[0], path_array[1]]
-	return log_path
+		return  "%s_editor_%s.%s" % [path_array[0], time, path_array[1]]
+	return "%s_%s.%s" % [path_array[0], time, path_array[1]]
 
 
 func _get_global_logger():
 	if not Engine.has_singleton("GodotLogger"): 
-		Engine.register_singleton("GodotLogger", Log.new())
+		Engine.register_singleton("GodotLogger", GodotLogger)
 	return Engine.get_singleton("GodotLogger")
 
 
 func _load_file():
-	_file = FileAccess.open(_get_log_path(), FileAccess.WRITE)
+	var filename: String = _get_log_path()
+	_file = FileAccess.open(filename, FileAccess.WRITE)
